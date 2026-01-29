@@ -6,37 +6,51 @@
 /*   By: kriad <kriad@student.42.fr>                +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/11/24 17:08:49 by kriad             #+#    #+#             */
-/*   Updated: 2025/11/24 17:45:11 by kriad            ###   ########.fr       */
+/*   Updated: 2025/12/29 20:25:44 by kriad            ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #include "get_next_line.h"
 
-static char	*gnl_read(int fd, char *stash)
+static char	*gnl_loop(int fd, char *stash, char *buffer, int *byte)
 {
-	char	*buffer;
 	char	*tmp;
-	int		byte;
 
-	byte = 1;
-	buffer = malloc((size_t)BUFFER_SIZE + 1);
-	if (!buffer)
+	if (BUFFER_SIZE <= 0)
 		return (NULL);
 	while (!ft_strchr(stash, '\n'))
 	{
-		byte = read(fd, buffer, BUFFER_SIZE);
-		if (byte <= 0)
+		*byte = read(fd, buffer, BUFFER_SIZE);
+		if (*byte <= 0)
 			break ;
-		buffer[byte] = '\0';
+		buffer[*byte] = '\0';
 		tmp = stash;
 		stash = ft_strjoin(tmp, buffer);
 		free(tmp);
 		if (!stash)
-			return (free(buffer), NULL);
+			return (NULL);
 	}
+	return (stash);
+}
+
+static char	*gnl_read(int fd, char *stash)
+{
+	char	*buffer;
+	int		byte;
+
+	if (BUFFER_SIZE <= 0)
+		return (NULL);
+	byte = 1;
+	buffer = malloc((size_t)BUFFER_SIZE + 1);
+	if (!buffer)
+		return (NULL);
+	stash = gnl_loop(fd, stash, buffer, &byte);
 	free(buffer);
-	if (byte < 0)
-		return (free(stash), NULL);
+	if (!stash || byte < 0)
+	{
+		free(stash);
+		return (NULL);
+	}
 	return (stash);
 }
 
@@ -63,7 +77,10 @@ static char	*gnl_clean(char *stash)
 	while (stash[i] && stash[i] != '\n')
 		i++;
 	if (!stash[i])
-		return (free(stash), NULL);
+	{
+		free(stash);
+		return (NULL);
+	}
 	new = ft_strdup(stash + i + 1);
 	free(stash);
 	return (new);
@@ -77,7 +94,11 @@ char	*get_next_line(int fd)
 	if (fd < 0 || BUFFER_SIZE <= 0)
 		return (NULL);
 	if (!stash)
+	{
 		stash = ft_strdup("");
+		if (!stash)
+			return (NULL);
+	}
 	stash = gnl_read(fd, stash);
 	if (!stash)
 		return (NULL);
